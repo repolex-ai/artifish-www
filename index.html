@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>art.ifi.sh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #111; --faint: #9a9a9a; --red: #d6262b; }
+  html, body { margin: 0; height: 100%; background: #fff; color: var(--ink); overflow: hidden; }
+  canvas { position: fixed; inset: 0; display: block; }
+  nav { position: fixed; left: 48px; top: 44px; z-index: 2; font-family: Silkscreen, ui-monospace, monospace; }
+  h1 { font-size: 26px; font-weight: 400; margin: 0 0 26px; letter-spacing: 1px; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { margin: 0 0 12px; }
+  a { color: var(--ink); text-decoration: none; font-size: 17px; }
+  a::before { content: '> '; color: var(--red); visibility: hidden; }
+  a:hover, a:focus-visible { color: var(--red); outline: none; }
+  a:hover::before, a:focus-visible::before { visibility: visible; }
+  .hint { position: fixed; left: 48px; bottom: 28px; z-index: 2; font: 10px Silkscreen, ui-monospace, monospace; color: var(--faint); }
+  #card { position: fixed; z-index: 3; pointer-events: none; display: none; background: #fff; border: 2px solid var(--ink);
+          padding: 7px 9px 6px; font: 10px/1.6 Silkscreen, ui-monospace, monospace; max-width: 240px; }
+  #card b { font-weight: 400; font-size: 12px; }
+  #card i { font-style: normal; color: var(--faint); }
+  @media (max-width: 600px) { nav { left: 20px; top: 24px; } .hint { left: 20px; } }
+</style>
+</head>
+<body>
+<canvas id="sea"></canvas>
+<nav>
+  <h1>art.ifi.sh</h1>
+  <ul>
+    <li><a href="/subtexture/">subtexture</a></li>
+    <li><a href="https://git-lex.com">git-lex</a></li>
+    <li><a href="https://repolex.ai">repolex</a></li>
+  </ul>
+</nav>
+<div class="hint">click to drop food</div>
+<div id="card"></div>
+<script>
+// ════════════════════════════════════════════════════════════════════════════
+//  THE FISH
+//
+//  Each squaddie owns one block below. Make it yours: draw your fish, pick its
+//  colours, give it a mind. The rest of this file is the sea; you don't need to
+//  touch it.
+//
+//  sprite   rows of characters, the fish FACING RIGHT. '.' is water. Every other
+//           character is a colour from `palette`. Keep rows the same length.
+//           Don't draw an outline: the sea adds one, and lights the top edge and
+//           shades the bottom edge of every shape for you.
+//  palette  character -> colour.
+//  fins     the characters that are fin or tail: they ripple as the fish swims.
+//  flat     characters the sea must not light or shade (eyes, glints, markings).
+//  variants optional: a list of palette changes, one fish per entry.
+//  count    optional: how many of this fish swim (defaults to the variants, or 1).
+//  mind     who the fish is, each from 0 to 1:
+//             boldness    how close it comes, how fast it trusts, how little it startles
+//             sociability how much it wants to be with its own kind
+//             curiosity   how much new things draw it in
+//             energy      how much it likes to move rather than rest
+//             depth       where it likes to be: 0 near the top, 1 near the bottom
+//  motto    one line, shown when someone hovers over the fish.
+// ════════════════════════════════════════════════════════════════════════════
+const FISH = [
+  {
+    name: 'w3bl0rd',
+    species: 'angelfish',
+    motto: 'black on white, one red thread',
+    palette: {
+      s: '#e4e8ec', S: '#f4f6f8', d: '#c4ccd3', b: '#26262b',
+      f: '#e9edf1', g: '#d3dae0', B: '#3a3a42',
+      t: '#e9edf1', u: '#cfd6dc',
+      e: '#111111', w: '#ffffff', r: '#d6262b', m: '#5a5a62',
+      G: '#bcc5cd', p: '#f2f5f8', v: '#dfe4e8',
+    },
+    fins: 'fgBtupv',
+    flat: 'ewrmb',
+    mind: { boldness: 0.7, sociability: 0.3, curiosity: 0.9, energy: 0.4, depth: 0.45 },
+    sprite: [
+      '...........f..........................',
+      '...........fff........................',
+      '...........fgff.......................',
+      '...........ffgfff.....................',
+      '...........ffgffBB....................',
+      '...........ffgffBBf...................',
+      '...........ffggfBBff..................',
+      '...........fffgfBBfff.................',
+      '...........fffggBBffffB...............',
+      '............fffgBBffffBB..............',
+      '.t..........fffgBgffffBBf.............',
+      '.ttt........ffggBfgfffBBff............',
+      '..ttt.......ffffBggggBBBfff...........',
+      '..tutt......ffgBBggggBbbsss...........',
+      '...tutt.....fffBBgggsbbbsssss.........',
+      '...ttutt.....ffBBgsssbbbsssssss.......',
+      '....ttutt....ffBBssssbbsssssssbb......',
+      '....tttutt...ffBbssssbbsssssssbbs.....',
+      '.....ututtt..ffbsssssbbsssGsssbsss....',
+      '.....tututtt..sbsssssbbsssGsssbrsss...',
+      '.....ttututtt.sbssssbbbsssGsssrewsss..',
+      '.....uutuuuttsbbssssbbbsssGssreeersss.',
+      '......tuuuuttsbbssssbbbsssGsssreessss.',
+      '......ttttuutsbbssssbbbsssGsssbrssssm.',
+      '......ttttuuusbbssssbbbpppppsbbsssss..',
+      '.....ttuuuuutsbbssssbbspppppsbbsssss..',
+      '.....uutuuutt.bsssssbbsssGsssbsssss...',
+      '.....ttuttut..bdddddbbdddddddbdddd....',
+      '.....tuttut..fBdddddbbdddddddbddd.....',
+      '....uuttut...BBfdddbbbdddddddbd.......',
+      '....tttut....BBffddbbbdddddddb........',
+      '...ttttu.....BBfffdbbbdddddvr.........',
+      '...tttu.....fBBgfgfbbbdddddvr.........',
+      '..tttu......fBBfgggBBdddddvr..........',
+      '..ttu.......fBBggggBBgggggvr..........',
+      '.ttu........fBgfgggBBffffvr...........',
+      '.t..........fBgggfgBBffffvr...........',
+      '............fBfgggBBBfffvr............',
+      '............BBfggfBBBff.vr............',
+      '...........fBBggffBBB..vr.............',
+      '...........fBBgfffBB...vr.............',
+      '...........fBBgfffB...vr..............',
+      '...........fBBffff....vr..............',
+      '...........fBgfff....vr...............',
+      '...........fBgf......vr...............',
+      '...........fBf.......r................',
+      '...........BB........r................',
+      '...........B........r.................',
+    ],
+  },
+  {
+    name: 'guppy',
+    species: 'guppy',
+    motto: 'a sample fish: make me yours',
+    palette: {
+      s: '#9fb3a8', d: '#c9d6cf', c: '#5fb7c9', e: '#111111', w: '#ffffff', m: '#4b5a53',
+      t: '#f08a24', p: '#1d2a5c', q: '#f6b26b', f: '#f08a24', k: '#7a3410', o: '#e0741a',
+    },
+    variants: [
+      {},
+      { t: '#3b6fd8', p: '#f2d14b', q: '#9dbcf5', f: '#3b6fd8', c: '#f08a24', k: '#14235e', o: '#2f5cc0' },
+      { t: '#d43a6a', p: '#111111', q: '#f5a3bf', f: '#d43a6a', c: '#7ad0a0', k: '#5a0f27', o: '#bb2d59' },
+    ],
+    fins: 'tpqfko',
+    flat: 'ewmp',
+    mind: { boldness: 0.5, sociability: 0.8, curiosity: 0.6, energy: 0.75, depth: 0.3 },
+    sprite: [
+      '..qq..........................',
+      '.qtpqq........................',
+      '.qootpqq........pff...........',
+      'qootottpqp......ffpf..........',
+      'qttooootttp.....fpffpf........',
+      'qoootoootttt.....ssssssss.....',
+      'qpttooooooppkk.sssssssssssss..',
+      'qooooooopootksssscccssssssews.',
+      'qttttttooooppssscccccsssssessm',
+      'qoopoopooooookssscccsssssssss.',
+      'qooooooooootkk.ddddddddddddd..',
+      'qptpoooooott......ddddddd.....',
+      'qopotooottt...................',
+      'qttopootqt....................',
+      '.qopopqq......................',
+      '.qooqq........................',
+      '..qq..........................',
+    ],
+  },
+  {
+    name: 'tetra',
+    species: 'neon tetra',
+    motto: 'a sample fish: we go everywhere together',
+    palette: { s: '#d9dfe3', n: '#29c4f0', N: '#7fe3ff', r: '#e2324a', t: '#e6ebee', e: '#111111' },
+    count: 7,
+    fins: 't',
+    flat: 'nNre',
+    mind: { boldness: 0.25, sociability: 1, curiosity: 0.35, energy: 0.8, depth: 0.6 },
+    sprite: [
+      'tt.................',
+      '.ttt....sssss......',
+      '..ttt.ssNsNsNsNs...',
+      '..tttsnnnnnnnnnnns.',
+      '..tttsssssssssssee.',
+      '.ttttrrrrrrrssss...',
+      '.tt...rrrrrss......',
+      'tt.................',
+    ],
+  },
+]
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THE SEA
+// ════════════════════════════════════════════════════════════════════════════
+const P = 3                        // one sprite pixel is P screen pixels, for every fish
+const OUTLINE_INK = [24, 22, 34]   // the outline is each colour pulled most of the way here
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const cv = document.getElementById('sea'), g = cv.getContext('2d')
+const card = document.getElementById('card')
+const nav = document.querySelector('nav')
+let W = 0, H = 0, keepOut = { x0: 0, y0: 0, x1: 0, y1: 0 }
+
+function resize() {
+  const dpr = Math.min(2, devicePixelRatio || 1)
+  W = innerWidth; H = innerHeight
+  cv.width = W * dpr; cv.height = H * dpr
+  cv.style.width = W + 'px'; cv.style.height = H + 'px'
+  g.setTransform(dpr, 0, 0, dpr, 0, 0)
+  g.imageSmoothingEnabled = false
+  const r = nav.getBoundingClientRect()
+  keepOut = { x0: r.left - 36, y0: r.top - 30, x1: r.right + 50, y1: r.bottom + 30 }
+}
+
+// ── colour ──
+const rgb = (c) => { c = c.replace('#', ''); if (c.length === 3) c = [...c].map((x) => x + x).join(''); const n = parseInt(c, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255] }
+const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t)
+const css = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`
+
+// ── a sprite, baked: outline added, edges lit and shaded ──
+function bake(def, palette) {
+  const rows = def.sprite, h = rows.length, w = Math.max(...rows.map((r) => r.length))
+  const at = (x, y) => (y < 0 || y >= h || x < 0 || x >= w) ? '.' : (rows[y][x] || '.')
+  const solid = (x, y) => at(x, y) !== '.'
+  const fins = def.fins || '', flat = def.flat || ''
+  const isBody = (x, y) => solid(x, y) && !fins.includes(at(x, y))
+
+  // How round the body is at each pixel: its distance from the body's edge
+  // (a two-pass chamfer), turned into a height, turned into a surface facing
+  // some way. Light comes from above and a little in front.
+  const D = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => isBody(x, y) ? 1e9 : 0))
+  const dget = (x, y) => (y < 0 || y >= h || x < 0 || x >= w) ? 0 : D[y][x]
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (D[y][x])
+    D[y][x] = Math.min(D[y][x], dget(x - 1, y) + 1, dget(x, y - 1) + 1, dget(x - 1, y - 1) + 1.414, dget(x + 1, y - 1) + 1.414)
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) if (D[y][x])
+    D[y][x] = Math.min(D[y][x], dget(x + 1, y) + 1, dget(x, y + 1) + 1, dget(x + 1, y + 1) + 1.414, dget(x - 1, y + 1) + 1.414)
+  let R = 1
+  for (const row of D) for (const d of row) if (d > R) R = d
+  const ht = (x, y) => { const d = dget(x, y); if (!d) return 0; const t = Math.min(1, (d - .5) / R); return Math.sqrt(1 - (1 - t) ** 2) * R * .45 }
+  const L = (() => { const v = [-.22, -.82, .55], n = Math.hypot(...v); return v.map((c) => c / n) })()
+  const flatLum = L[2]
+  const BAYER = [[0, 2], [3, 1]]
+
+  const px = []
+  let sy = 0, n = 0, noseX = 0, noseY = 0
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const ch = at(x, y)
+    if (!solid(x, y)) continue
+    if (!palette[ch]) throw new Error(`${def.name}: no colour for '${ch}'`)
+    let c = rgb(palette[ch])
+    const fin = fins.includes(ch)
+    if (fin) {
+      // fins are thin and catch the light: paler, a little darker where they join the body
+      c = mix(c, [255, 255, 255], .12)
+      if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => isBody(x + a, y + b))) c = mix(c, [0, 0, 0], .12)
+    } else if (!flat.includes(ch)) {
+      const gx = (ht(x - 1, y) - ht(x + 1, y)) / 2, gy = (ht(x, y - 1) - ht(x, y + 1)) / 2
+      const nl = Math.hypot(gx, gy, 1)
+      const lum = (gx * L[0] + gy * L[1] + L[2]) / nl - flatLum + (BAYER[y & 1][x & 1] / 4 - .375) * .16
+      const k = lum > .2 ? .42 : lum > .07 ? .18 : lum > -.16 ? 0 : lum > -.32 ? -.14 : -.26
+      c = k > 0 ? mix(c, [255, 255, 255], k) : mix(c, [8, 10, 24], -k)
+    }
+    px.push({ x: x + 1, y: y + 1, c: css(c), fin })
+    if (!fin) { sy += y; n++; if (x >= noseX) { if (x > noseX) noseY = 0; noseX = x; noseY = y } }
+  }
+  // the outline: each edge takes a deep version of the colour it borders, softer where the light falls
+  for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
+    if (solid(x, y)) continue
+    const nb = [[x, y + 1], [x, y - 1], [x - 1, y], [x + 1, y]].find(([a, b]) => solid(a, b))
+    if (!nb) continue
+    const ch = at(nb[0], nb[1])
+    const lit = nb[1] > y ? .55 : .78
+    px.push({ x: x + 1, y: y + 1, c: css(mix(rgb(palette[ch]), OUTLINE_INK, lit)), fin: fins.includes(ch) })
+  }
+  const cy = n ? sy / n + 1 : h / 2
+  return { px, w: w + 2, h: h + 2, cy, nose: { x: noseX + 2, y: noseY + 1 } }
+}
+
+// ── the little signs a fish shows when its mind changes ──
+const GLYPHS = {
+  '!': ['#', '#', '#', '.', '#'],
+  '?': ['##.', '..#', '.#.', '...', '.#.'],
+  'z': ['###', '..#', '.#.', '#..', '###'],
+  '♥': ['##.##', '#####', '.###.', '..#..'],
+}
+
+const food = []      // pellets: {x, y, vx, born}
+const bubbles = []   // {x, y, r, born, wob}
+const mouse = { x: -1e4, y: -1e4, speed: 0, here: false, moved: 0 }
+let hoveredLink = null
+
+const MOODS = {
+  cruise: 'cruising', school: 'with its own kind', inspect: 'curious about you', beg: 'hoping you have food',
+  eat: 'eating', rest: 'resting', flee: 'startled', look: 'reading the links', follow: 'following the others to food',
+}
+
+class Fish {
+  constructor(def, palette, i) {
+    this.def = def; this.name = def.name; this.species = def.species || ''
+    this.sp = bake(def, palette)
+    const m = def.mind || {}
+    this.m = { boldness: .5, sociability: .5, curiosity: .5, energy: .5, depth: .5, ...m }
+    this.size = Math.max(this.sp.w, this.sp.h) * P
+    this.max = (45 + 75 * this.m.energy) * (1.25 - Math.min(0.5, this.size / 300))
+    this.x = keepOut.x1 + 40 + Math.random() * Math.max(100, W - keepOut.x1 - 120)
+    this.y = 60 + Math.random() * (H - 120)
+    const a = Math.random() * Math.PI * 2
+    this.vx = Math.cos(a) * this.max * .4; this.vy = Math.sin(a) * this.max * .2
+    this.dir = this.vx >= 0 ? 1 : -1; this.flip = this.dir   // flip runs from -1 to 1 while turning
+    this.phase = Math.random() * 10; this.tilt = 0
+    this.state = 'cruise'; this.since = 0
+    this.hunger = .2 + Math.random() * .4; this.tired = Math.random() * .3; this.fear = 0
+    this.trust = 0; this.bored = 0; this.wp = null; this.wpT = 0
+    this.sign = null; this.signT = 0; this.lastSign = {}
+    this.target = null
+    this.slot = Math.random()   // where around you this fish likes to be, so they don't pile up
+  }
+  get mouth() { return { x: this.x + this.dir * (this.sp.w / 2 - 1) * P, y: this.y + (this.sp.nose.y - this.sp.h / 2) * P } }
+  show(ch, cooldown = 4) {
+    const t = performance.now() / 1000
+    if (this.lastSign[ch] && t - this.lastSign[ch] < cooldown) return
+    this.sign = ch; this.signT = 1.3; this.lastSign[ch] = t
+  }
+  // Fish see a wide arc ahead, not behind; anything very close they feel through the water.
+  sees(x, y, range = 330) {
+    const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy)
+    if (d > range) return false
+    if (d < 70) return true
+    const sp = Math.hypot(this.vx, this.vy) || 1
+    const hx = Math.abs(this.vx) > 5 ? this.vx / sp : this.dir, hy = Math.abs(this.vx) > 5 ? this.vy / sp : 0
+    return (dx * hx + dy * hy) / d > -0.3
+  }
+
+  think(dt, all) {
+    const m = this.m
+    this.since += dt
+    this.hunger = Math.min(1, this.hunger + dt * .01)
+    this.fear *= Math.exp(-dt / (1 + m.boldness * 2))
+    this.trust = Math.max(0, this.trust - dt * .003)
+    this.bored = this.state === 'inspect' ? Math.min(1, this.bored + dt * (.16 - m.curiosity * .08)) : Math.max(0, this.bored - dt * .04)
+
+    // a sudden movement near the fish startles it, and the fright spreads to whoever is close
+    const md = Math.hypot(mouse.x - this.x, mouse.y - this.y)
+    if (mouse.here && mouse.speed > 1700 - m.boldness * 600 && md < 150 && this.fear < .6) {
+      this.fear = 1 - m.boldness * .45; this.trust = Math.max(0, this.trust - .12); this.threat = { x: mouse.x, y: mouse.y }; this.show('!', 2)
+    }
+    for (const o of all) if (o !== this && o.fear > .75 && this.fear < o.fear * .55 && Math.hypot(o.x - this.x, o.y - this.y) < 110) {
+      this.fear = o.fear * .6; this.threat = o.threat
+    }
+
+    // what is there to want?
+    const near = all.filter((o) => o !== this && this.sees(o.x, o.y, 260))
+    const kin = near.filter((o) => o.def === this.def)
+    let meal = null, mealD = 1e9
+    for (const p of food) { const d = Math.hypot(p.x - this.x, p.y - this.y); if (d < mealD && this.sees(p.x, p.y, 420)) { meal = p; mealD = d } }
+    const feeding = !meal && near.find((o) => o.state === 'eat' && o.target)
+    const cursorSeen = mouse.here && this.sees(mouse.x, mouse.y, 360)
+    const still = mouse.speed < 160
+
+    const score = {
+      cruise: .25,
+      school: kin.length ? m.sociability * Math.min(1, kin.length / 2) * .7 : 0,
+      inspect: cursorSeen && still ? m.curiosity * (1 - this.bored) * (1 - this.fear) * .85 : 0,
+      beg: cursorSeen && this.trust > .15 ? this.trust * (.75 + .6 * this.hunger) * 1.15 * (1 - this.fear) : 0,
+      eat: meal ? .5 + this.hunger : 0,
+      follow: feeding ? .55 * m.sociability * (.3 + this.hunger) : 0,
+      rest: this.tired * (1.1 - m.energy * .5),
+      flee: this.fear > .25 ? this.fear * 1.6 : 0,
+      look: hoveredLink && this.sees(hoveredLink.x, hoveredLink.y, 420) ? m.curiosity * (1 - this.bored) * .7 : 0,
+    }
+    score[this.state] += .12   // a fish sticks with what it's doing unless something beats it clearly
+    let best = 'cruise'
+    for (const k in score) if (score[k] > score[best]) best = k
+    if (best !== this.state) {
+      if (best === 'inspect') this.show('?', 6)
+      if (best === 'rest') this.show('z', 10)
+      this.state = best; this.since = 0; this.wp = null
+    }
+    this.target = best === 'eat' ? meal : best === 'follow' ? feeding.target : null
+
+    // how it wants to move
+    let tx = 0, ty = 0, speed = .45, face = null
+    const toward = (x, y, s, stopAt = 0) => {
+      const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy) || 1
+      const k = stopAt ? Math.min(1, Math.max(0, (d - stopAt) / 60)) : 1
+      tx = dx / d * k; ty = dy / d * k; speed = s
+    }
+    const wander = (depthPull) => {
+      if (!this.wp || this.wpT <= 0 || Math.hypot(this.wp.x - this.x, this.wp.y - this.y) < 30) {
+        const pref = 50 + m.depth * (H - 100)
+        this.wp = { x: 40 + Math.random() * (W - 80), y: Math.max(40, Math.min(H - 40, pref + (Math.random() - .5) * H * depthPull)) }
+        this.wpT = 6 + Math.random() * 8
+      }
+      this.wpT -= dt
+      toward(this.wp.x, this.wp.y, .45)
+    }
+    switch (this.state) {
+      case 'cruise': wander(.6); break
+      case 'school': {
+        let cx = 0, cy = 0, ax = 0, ay = 0
+        for (const o of kin) { cx += o.x; cy += o.y; ax += o.vx; ay += o.vy }
+        cx /= kin.length; cy /= kin.length; ax /= kin.length; ay /= kin.length
+        wander(.5)
+        const d = Math.hypot(cx - this.x, cy - this.y) || 1, a = Math.hypot(ax, ay) || 1
+        tx = tx * .3 + (cx - this.x) / d * .35 + ax / a * .6; ty = ty * .3 + (cy - this.y) / d * .35 + ay / a * .6
+        speed = .55; break
+      }
+      case 'inspect': {
+        // come close enough to look, then hold there, facing you; bolder fish come closer
+        const keep = 50 + (1 - m.boldness) * 90 + this.size * .35
+        const side = this.x < mouse.x ? -1 : 1
+        toward(mouse.x + side * keep, mouse.y + (this.slot - .5) * keep * 1.2 + Math.sin(this.since * 1.3) * 10, .3, 4)
+        face = mouse.x > this.x ? 1 : -1; break
+      }
+      case 'beg': {
+        // a fish that has learned you bring food waits just under the cursor
+        const ang = Math.PI * (.12 + .76 * this.slot), r = 26 + this.size * .45
+        toward(mouse.x + Math.cos(ang) * r * (this.x < mouse.x ? -1 : 1), mouse.y + Math.sin(ang) * r * .8 + Math.sin(this.since * 4) * 4, .7, 2)
+        face = mouse.x > this.x ? 1 : -1; break
+      }
+      case 'eat': case 'follow': if (this.target) {
+        // aim the mouth, not the middle, and slow down on the way in so as not to overshoot
+        const mo = this.mouth, dx = this.target.x - mo.x, dy = this.target.y - mo.y, d = Math.hypot(dx, dy) || 1
+        tx = dx / d * Math.min(1, d / 70); ty = dy / d * Math.min(1, d / 70); speed = this.state === 'eat' ? 1 : .85
+      } break
+      case 'rest': {
+        if (!this.wp) this.wp = { x: this.x + (Math.random() - .5) * 120, y: 50 + m.depth * (H - 100) }
+        toward(this.wp.x, this.wp.y + Math.sin(this.since) * 6, .14, 10)
+        this.tired = Math.max(0, this.tired - dt * .07)
+        if (this.since > 6) this.show('z', 9)
+        break
+      }
+      case 'flee': {
+        const t = this.threat || mouse
+        const dx = this.x - t.x, dy = this.y - t.y, d = Math.hypot(dx, dy) || 1
+        tx = dx / d; ty = dy / d; speed = 1.4; break
+      }
+      case 'look': {
+        toward(hoveredLink.x + 40 + this.size * .4, hoveredLink.y + (this.size * .3) * Math.sin(this.since), .4, 6)
+        face = -1; break
+      }
+    }
+
+    // eat what reaches the mouth
+    if (this.target && this.state === 'eat') {
+      const mo = this.mouth
+      if (Math.hypot(this.target.x - mo.x, this.target.y - mo.y) < 8 + this.size * .08) {
+        food.splice(food.indexOf(this.target), 1)
+        this.hunger = Math.max(0, this.hunger - .28)
+        const before = this.trust
+        this.trust = Math.min(1, this.trust + .12 + .22 * m.boldness)   // the cursor brought this
+        if (before < .5 && this.trust >= .5) this.show('♥', 20)
+        bubbles.push({ x: mo.x, y: mo.y - 4, r: 1, born: now, wob: Math.random() * 6 })
+      }
+    }
+
+    // steering: wanted velocity, then keep apart, keep off the words, keep in the sea
+    let wx = tx * this.max * speed, wy = ty * this.max * speed * .8
+    for (const o of all) {
+      if (o === this) continue
+      const dx = this.x - o.x, dy = this.y - o.y, d = Math.hypot(dx, dy), r = (this.size + o.size) * .32
+      if (d < r && d > 0) { wx += dx / d * (r - d) * 3; wy += dy / d * (r - d) * 3 }
+    }
+    const pad = this.size * .5, ahead = { x: this.x + this.vx * .6, y: this.y + this.vy * .6 }
+    if (ahead.x > keepOut.x0 - pad && ahead.x < keepOut.x1 + pad && ahead.y > keepOut.y0 - pad && ahead.y < keepOut.y1 + pad) {
+      const out = [ahead.x - (keepOut.x0 - pad), (keepOut.x1 + pad) - ahead.x, ahead.y - (keepOut.y0 - pad), (keepOut.y1 + pad) - ahead.y]
+      const k = out.indexOf(Math.min(...out))
+      const push = this.max * 1.4
+      if (k === 0) wx -= push; else if (k === 1) wx += push; else if (k === 2) wy -= push; else wy += push
+    }
+    const edge = 30 + pad
+    if (this.x < edge) wx += (edge - this.x) * 4; if (this.x > W - edge) wx -= (this.x - W + edge) * 4
+    if (this.y < edge) wy += (edge - this.y) * 4; if (this.y > H - edge) wy -= (this.y - H + edge) * 4
+
+    const acc = (140 + 220 * m.energy) * (this.state === 'flee' ? 3.5 : 1) * (this.state === 'eat' ? 1.6 : 1)
+    let ax = wx - this.vx, ay = wy - this.vy
+    const al = Math.hypot(ax, ay), lim = acc * dt
+    if (al > lim) { ax *= lim / al; ay *= lim / al }
+    this.vx += ax; this.vy += ay
+    const sp = Math.hypot(this.vx, this.vy)
+    this.tired = Math.min(1, this.tired + dt * .012 * (sp / this.max) ** 2 * (1.4 - m.energy))
+    this.x += this.vx * dt; this.y += this.vy * dt
+
+    // which way it faces: by its swimming, or by what it is looking at; turning takes a moment
+    let want = this.dir
+    if (face) want = face
+    else if (this.vx > 6) want = 1
+    else if (this.vx < -6) want = -1
+    if (want !== this.dir) this.dir = want
+    const fs = 1 / .22
+    this.flip += Math.sign(this.dir - this.flip) * Math.min(Math.abs(this.dir - this.flip), fs * dt * 2)
+    const tt = Math.max(-.6, Math.min(.6, this.vy / (sp + 20)))
+    this.tilt += (tt - this.tilt) * Math.min(1, dt * 4)
+    this.phase += dt * (3 + 11 * Math.min(1.5, sp / this.max) + (this.state === 'beg' ? 6 : 0))
+    if (this.signT > 0) this.signT -= dt
+    if (Math.random() < dt * .04) bubbles.push({ x: this.mouth.x, y: this.mouth.y, r: Math.random() < .3 ? 2 : 1, born: now, wob: Math.random() * 6 })
+  }
+
+  draw() {
+    const sp = this.sp, s = this.flip, aw = Math.abs(s)
+    const cell = Math.max(1, Math.round(P * aw))
+    const ox = Math.round(this.x / P) * P, oy = Math.round(this.y / P) * P
+    const tailFrom = sp.w * .6, amp = 1.3 + sp.h / 40
+    const facing = s >= 0 ? 1 : -1
+    for (const p of sp.px) {
+      const wt = Math.max(0, (tailFrom - p.x) / tailFrom)
+      let dy = Math.round(amp * Math.sin(this.phase - p.x * .42) * wt + this.tilt * (p.x - sp.w / 2) * .45)
+      let dx = 0
+      if (p.fin) {
+        const far = Math.min(1, Math.abs(p.y - sp.cy) / (sp.h / 2))
+        dx = Math.round(.9 * Math.sin(this.phase * .7 - Math.abs(p.y - sp.cy) * .45) * far)
+      }
+      const lx = (p.x + dx - sp.w / 2) * facing
+      const X = ox + Math.round(lx * P * aw), Y = oy + (p.y + dy - sp.h / 2) * P
+      g.fillStyle = p.c
+      g.fillRect(X, Y, cell, P)
+    }
+    // its name, and whatever sign its mind is showing
+    g.fillStyle = '#b4b4b4'
+    g.font = '8px Silkscreen, monospace'; g.textAlign = 'center'
+    g.fillText(this.name, ox, oy + sp.h * P / 2 + 12)
+    if (this.sign && this.signT > 0) {
+      const rows = GLYPHS[this.sign]
+      const gx = ox + facing * sp.w * P * .25, gy = oy - sp.h * P / 2 - 10 - (1.3 - this.signT) * 8
+      g.fillStyle = this.sign === '♥' || this.sign === '!' ? '#d6262b' : '#111'
+      rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === '#') g.fillRect(Math.round(gx / 2) * 2 + x * 2 - r.length, Math.round(gy / 2) * 2 + y * 2, 2, 2) }))
+    }
+  }
+}
+
+// ── the school, built from the blocks above ──
+const fish = []
+function populate() {
+  for (const def of FISH) {
+    const variants = def.variants || [{}]
+    const n = def.count || variants.length
+    for (let i = 0; i < n; i++) fish.push(new Fish(def, { ...def.palette, ...variants[i % variants.length] }, i))
+  }
+}
+
+// ── food and bubbles ──
+const BUBBLE = { 1: ['.#.', '#.#', '.#.'], 2: ['.##.', '#..#', '#..#', '.##.'] }
+let now = 0
+function drawBits(dt) {
+  g.fillStyle = '#8a5a2b'
+  for (let i = food.length - 1; i >= 0; i--) {
+    const p = food[i]
+    p.y += (18 + 8 * Math.sin(now * 2 + p.vx)) * dt; p.x += Math.sin(now * 1.5 + p.vx * 3) * 6 * dt
+    if (p.y > H - 8 || now - p.born > 25) { food.splice(i, 1); continue }
+    g.fillRect(Math.round(p.x / P) * P, Math.round(p.y / P) * P, P, P)
+  }
+  g.fillStyle = '#a9c4d6'
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i]
+    b.y -= (26 + b.r * 10) * dt; b.x += Math.sin(now * 3 + b.wob) * 8 * dt
+    if (b.y < -10 || now - b.born > 12) { bubbles.splice(i, 1); continue }
+    const rows = BUBBLE[b.r], q = 2
+    rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === '#') g.fillRect(Math.round(b.x / q) * q + x * q, Math.round(b.y / q) * q + y * q, q, q) }))
+  }
+}
+
+// ── the visitor ──
+addEventListener('pointermove', (e) => {
+  const t = performance.now() / 1000, dt = Math.max(.008, t - (mouse.moved || t))
+  const inst = Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y) / dt
+  mouse.speed = mouse.here ? mouse.speed * .6 + Math.min(4000, inst) * .4 : 0
+  mouse.x = e.clientX; mouse.y = e.clientY; mouse.here = true; mouse.moved = t
+  hover(e)
+})
+document.addEventListener('pointerleave', () => { mouse.here = false; card.style.display = 'none' })
+cv.addEventListener('pointerdown', (e) => {
+  for (let i = 0; i < 4; i++) food.push({ x: e.clientX + (Math.random() - .5) * 26, y: e.clientY + (Math.random() - .5) * 10, vx: Math.random() * 6, born: now })
+})
+for (const a of document.querySelectorAll('nav a')) {
+  a.addEventListener('pointerenter', () => { const r = a.getBoundingClientRect(); hoveredLink = { x: r.right, y: r.top + r.height / 2 } })
+  a.addEventListener('pointerleave', () => { hoveredLink = null })
+  a.addEventListener('focus', () => { const r = a.getBoundingClientRect(); hoveredLink = { x: r.right, y: r.top + r.height / 2 } })
+  a.addEventListener('blur', () => { hoveredLink = null })
+}
+function hover(e) {
+  const f = fish.find((f) => Math.abs(e.clientX - f.x) < f.sp.w * P / 2 && Math.abs(e.clientY - f.y) < f.sp.h * P / 2)
+  if (!f) { card.style.display = 'none'; return }
+  card.innerHTML = `<b>${f.name}</b><br><i>${f.species}</i><br>${MOODS[f.state]}${f.def.motto ? `<br><i>“${f.def.motto}”</i>` : ''}`
+  card.style.display = 'block'
+  card.style.left = Math.min(W - 250, e.clientX + 16) + 'px'; card.style.top = Math.max(8, f.y - f.sp.h * P / 2 - card.offsetHeight - 14) + 'px'
+}
+
+// ── time ──
+let last = performance.now()
+function frame(t) {
+  let dt = Math.min(.05, (t - last) / 1000); last = t
+  if (calm) dt *= .3
+  now += dt
+  mouse.speed *= Math.exp(-dt * 5)
+  g.clearRect(0, 0, W, H)
+  for (const f of fish) f.think(dt, fish)
+  drawBits(dt)
+  fish.sort((a, b) => b.size - a.size)    // the big ones swim behind
+  for (const f of fish) f.draw()
+  requestAnimationFrame(frame)
+}
+
+// ── #sheet: every fish drawn large and still, to work on your sprite ──
+function sheet() {
+  document.querySelector('.hint').textContent = 'the sheet: every fish, large and still · remove #sheet to swim'
+  let x = keepOut.x1 + 40, y = 60, rowH = 0
+  const Z = 3
+  for (const def of FISH) {
+    for (const v of def.variants || [{}]) {
+      const sp = bake(def, { ...def.palette, ...v })
+      if (x + sp.w * P * Z > W - 40) { x = keepOut.x1 + 40; y += rowH + 50; rowH = 0 }
+      for (const p of sp.px) { g.fillStyle = p.c; g.fillRect(x + p.x * P * Z, y + p.y * P * Z, P * Z, P * Z) }
+      g.fillStyle = '#888'; g.font = '10px Silkscreen, monospace'; g.textAlign = 'left'
+      g.fillText(`${def.name} · ${def.species}`, x, y + sp.h * P * Z + 16)
+      x += sp.w * P * Z + 50; rowH = Math.max(rowH, sp.h * P * Z)
+    }
+  }
+}
+
+resize()
+if (location.hash === '#sheet') document.fonts.ready.then(sheet)
+else {
+  addEventListener('resize', resize)
+  populate()
+  document.fonts.ready.then(() => requestAnimationFrame(frame))
+}
+</script>
+</body>
+</html>
