@@ -1,0 +1,33 @@
+// selkie's fish: a leafy sea dragon, jade-green, cloaked in moss. Every field is explained in fish/README.md.
+swim({
+  name: 'selkie',
+  species: 'leafy sea dragon',
+  motto: 'the green comes from the light',
+  palette: {
+    b: '#a8d4a6', B: '#7fb48a', l: '#d8ecc8', s: '#bfe0b4',
+    m: '#5e8f3c', M: '#8fbb5c', t: '#9cc78a', T: '#6f9f52',
+    o: '#e8873a', e: '#141414', a: '#e3a02f', w: '#ffffff',
+  },
+  fins: 'mMtT',
+  flat: 'eawo',
+  mind: { boldness: 0.65, sociability: 0.55, curiosity: 0.95, energy: 0.35, depth: 0.35 },
+  sprite: [
+    '..............m.........m.........................',
+    '.............mMm.......mMm........................',
+    '..............mMm.....mMm.........................',
+    '...............mM....Mm...........................',
+    '.......M........bbbbbbbb..........................',
+    '......MmM.....bbbbbbbbbbbb..............m.........',
+    '.......Mb...bbbbobbbbbbbbbbb...........mM.........',
+    '..T....bbbbbbbbbbbbbbbbbbbbbbb.......bbbbbb.......',
+    '.TtT.bbbbbbBBBBbbbbbbbbbbbobbbbbbbbbbbbbbbbbb.....',
+    'TtTtbbbbbBBBBBBBBbbbbbbbbbbbbbbbbbbbbbbawbbbbbbbbb',
+    '.TtT.bbbbbsssssssssssssbbbbbbbbbbbbbbbbaebbbbbbbbb',
+    '..T....llllllllllllllllllllllssbbbbbbbbbbbbbbb....',
+    '.......Ml...lllllllllllllllll.......ssssss........',
+    '......MmM.....mm.......mm...........M.............',
+    '.......M.....mMm.....mMm...........MmM............',
+    '............mMm.....mMm.............M.............',
+    '............m.......m.............................',
+  ],
+})
