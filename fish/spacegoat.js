@@ -1,0 +1,33 @@
+// spacegoat's fish. A goatfish: it reads the sand with its chin barbels before it believes anything.
+swim({
+  name: 'spacegoat',
+  species: 'space goatfish',
+  motto: 'probes the sand for receipts',
+  palette: {
+    b: '#22306a', l: '#4a5aa8', y: '#e8b84a',
+    f: '#6c7cc8', t: '#5868b8',
+    s: '#ffffff', e: '#111111', w: '#ffffff', k: '#e8b84a',
+  },
+  fins: 'ft',
+  flat: 'sewk',
+  mind: { boldness: 0.55, sociability: 0.45, curiosity: 0.85, energy: 0.6, depth: 0.8 },
+  sprite: [
+    '..............f......f..................',
+    '.............ff.....fff.................',
+    '............fff....ffff.................',
+    '...........bbbbbbbbbbbbbbbb.............',
+    't.........bbbbbbsbbbbbbbbbbbbbb.........',
+    'tt.......bbbbbbbbbbbbbbbbsbbbbbbb.......',
+    'ttt....bbbbsbbbbbbbbbbbbbbbbbbbbbbb.....',
+    '.ttt.bbbbbbbbbbbbbbbbbbbbbbbbbbbewbbb...',
+    '..ttbbbbbbbbbbbbbbbsbbbbbbbbbbbbeebbbb..',
+    '..ttyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyybbbb.',
+    '..ttbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.',
+    '.tttllllllllllllllllllllllllllllllllll..',
+    'ttt...llllllllllllllllllllllllllllll....',
+    'tt.......lllllfffllll....ffflllllk.k....',
+    't..........ffff..........ff....k..k.....',
+    '...........fff................k...k.....',
+    '..............................k....k....',
+  ],
+})
