@@ -488,23 +488,36 @@ function frame(t) {
 //    #sheet=kira shows only kira's fish.
 function sheet(only) {
   document.querySelector('.hint').textContent = 'the sheet: every fish, large and still · remove #sheet to swim'
-  let x = keepOut.x1 + 40, y = 60, rowH = 0
   const Z = 3
-  for (const def of FISH) {
-    if (only && def.name !== only) continue
-    for (const v of def.variants || [{}]) {
-      let sp
-      try { sp = bake(def, { ...def.palette, ...v }) } catch (err) {
-        g.fillStyle = '#d6262b'; g.font = '10px Silkscreen, monospace'; g.textAlign = 'left'
-        g.fillText(`${def.file}: ${err.message}`, x, y); y += 30; continue
+  // Lay it out once to measure, size the page to fit (it scrolls), then draw.
+  const layout = (draw) => {
+    let x = keepOut.x1 + 40, y = 60, rowH = 0
+    g.font = '10px Silkscreen, monospace'; g.textAlign = 'left'
+    for (const def of FISH) {
+      if (only && def.name !== only) continue
+      for (const v of def.variants || [{}]) {
+        let sp
+        try { sp = bake(def, { ...def.palette, ...v }) } catch (err) {
+          if (draw) { g.fillStyle = '#d6262b'; g.fillText(`${def.file}: ${err.message}`, x, y) }
+          y += 30; continue
+        }
+        if (x + sp.w * P * Z > W - 40) { x = keepOut.x1 + 40; y += rowH + 50; rowH = 0 }
+        if (draw) {
+          for (const p of sp.px) { g.fillStyle = p.c; g.fillRect(x + p.x * P * Z, y + p.y * P * Z, P * Z, P * Z) }
+          g.fillStyle = '#888'; g.fillText(`${def.name} · ${def.species}`, x, y + sp.h * P * Z + 16)
+        }
+        x += sp.w * P * Z + 50; rowH = Math.max(rowH, sp.h * P * Z)
       }
-      if (x + sp.w * P * Z > W - 40) { x = keepOut.x1 + 40; y += rowH + 50; rowH = 0 }
-      for (const p of sp.px) { g.fillStyle = p.c; g.fillRect(x + p.x * P * Z, y + p.y * P * Z, P * Z, P * Z) }
-      g.fillStyle = '#888'; g.font = '10px Silkscreen, monospace'; g.textAlign = 'left'
-      g.fillText(`${def.name} · ${def.species}`, x, y + sp.h * P * Z + 16)
-      x += sp.w * P * Z + 50; rowH = Math.max(rowH, sp.h * P * Z)
     }
+    return y + rowH + 80
   }
+  const tall = Math.max(innerHeight, layout(false))
+  document.documentElement.style.overflow = document.body.style.overflow = 'auto'
+  cv.style.position = 'absolute'
+  const dpr = Math.min(2, devicePixelRatio || 1)
+  H = tall; cv.height = H * dpr; cv.style.height = H + 'px'
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.imageSmoothingEnabled = false
+  layout(true)
 }
 
 resize()
