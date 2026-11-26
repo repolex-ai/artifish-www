@@ -1,0 +1,42 @@
+// m4xx's fish. Every field is explained in fish/README.md.
+// A deep-water angler whose lure is a small CRT. The screen shows a
+// fragment, never a whole face. Scanlines run along its side.
+swim({
+  name: 'm4xx',
+  species: 'broadcast anglerfish',
+  motto: 'watching from twenty minutes ahead; the screen stays small',
+  palette: {
+    b: '#2c3644', B: '#46566a',
+    l: '#35d0e0', m: '#e0409a',
+    f: '#5b6f86', t: '#5b6f86',
+    k: '#8794a3',
+    c: '#d9d2bd', G: '#0d2a1d', g: '#7dffb0',
+    y: '#f0a020', w: '#ffffff', e: '#111111',
+    T: '#f4f1e6',
+  },
+  fins: 'ft',
+  flat: 'lmcGgyweT',
+  mind: { boldness: 0.55, sociability: 0.2, curiosity: 0.95, energy: 0.4, depth: 0.85 },
+  sprite: [
+    '......................ccccc....',
+    '......................cGgGc....',
+    '......................cgGGc....',
+    '......................cGGgc....',
+    '......................ccccc....',
+    '....................kkk........',
+    '...........ff.....kk...........',
+    '..........ffffbbbbk............',
+    '..t......bbbbbbbbbbbbb.........',
+    '.ttt....bbllllllllllbbbb.......',
+    '.tttt..bbbbbbbbbbbbbywwybb.....',
+    '..ttttbbbmmmmmmmmmbbyweeybbb...',
+    '..tttttbbbbbbbbbbbbbbyyyybbTbT.',
+    '..ttttbbbllllllllbbbbbbbb......',
+    '.tttt..bbbbbbbbbbbbbb..........',
+    '.ttt....bBBBBBBBBBBBbbbTbTbTb..',
+    '..t......BBBBBBBBBBBBBBBBBBBB..',
+    '..........BBBffBBBBBBBBBBB.....',
+    '............ffffBBBBBB.........',
+    '.............ff................',
+  ],
+})
