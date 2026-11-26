@@ -43,150 +43,31 @@
 // ════════════════════════════════════════════════════════════════════════════
 //  THE FISH
 //
-//  Each squaddie owns one block below. Make it yours: draw your fish, pick its
-//  colours, give it a mind. The rest of this file is the sea; you don't need to
-//  touch it.
-//
-//  sprite   rows of characters, the fish FACING RIGHT. '.' is water. Every other
-//           character is a colour from `palette`. Keep rows the same length.
-//           Don't draw an outline: the sea adds one, and lights the top edge and
-//           shades the bottom edge of every shape for you.
-//  palette  character -> colour.
-//  fins     the characters that are fin or tail: they ripple as the fish swims.
-//  flat     characters the sea must not light or shade (eyes, glints, markings).
-//  variants optional: a list of palette changes, one fish per entry.
-//  count    optional: how many of this fish swim (defaults to the variants, or 1).
-//  mind     who the fish is, each from 0 to 1:
-//             boldness    how close it comes, how fast it trusts, how little it startles
-//             sociability how much it wants to be with its own kind
-//             curiosity   how much new things draw it in
-//             energy      how much it likes to move rather than rest
-//             depth       where it likes to be: 0 near the top, 1 near the bottom
-//  motto    one line, shown when someone hovers over the fish.
+//  Every fish lives in its own file, fish/<name>.js, which calls swim({...}).
+//  fish/README.md explains every field. A squaddie whose file is not there yet
+//  is simply skipped, and a fish file with a mistake in it is left out (the
+//  console says why) rather than stopping the whole sea.
 // ════════════════════════════════════════════════════════════════════════════
-const FISH = [
-  {
-    name: 'w3bl0rd',
-    species: 'angelfish',
-    motto: 'black on white, one red thread',
-    palette: {
-      s: '#e4e8ec', S: '#f4f6f8', d: '#c4ccd3', b: '#26262b',
-      f: '#e9edf1', g: '#d3dae0', B: '#3a3a42',
-      t: '#e9edf1', u: '#cfd6dc',
-      e: '#111111', w: '#ffffff', r: '#d6262b', m: '#5a5a62',
-      G: '#bcc5cd', p: '#f2f5f8', v: '#dfe4e8',
-    },
-    fins: 'fgBtupv',
-    flat: 'ewrmb',
-    mind: { boldness: 0.7, sociability: 0.3, curiosity: 0.9, energy: 0.4, depth: 0.45 },
-    sprite: [
-      '...........f..........................',
-      '...........fff........................',
-      '...........fgff.......................',
-      '...........ffgfff.....................',
-      '...........ffgffBB....................',
-      '...........ffgffBBf...................',
-      '...........ffggfBBff..................',
-      '...........fffgfBBfff.................',
-      '...........fffggBBffffB...............',
-      '............fffgBBffffBB..............',
-      '.t..........fffgBgffffBBf.............',
-      '.ttt........ffggBfgfffBBff............',
-      '..ttt.......ffffBggggBBBfff...........',
-      '..tutt......ffgBBggggBbbsss...........',
-      '...tutt.....fffBBgggsbbbsssss.........',
-      '...ttutt.....ffBBgsssbbbsssssss.......',
-      '....ttutt....ffBBssssbbsssssssbb......',
-      '....tttutt...ffBbssssbbsssssssbbs.....',
-      '.....ututtt..ffbsssssbbsssGsssbsss....',
-      '.....tututtt..sbsssssbbsssGsssbrsss...',
-      '.....ttututtt.sbssssbbbsssGsssrewsss..',
-      '.....uutuuuttsbbssssbbbsssGssreeersss.',
-      '......tuuuuttsbbssssbbbsssGsssreessss.',
-      '......ttttuutsbbssssbbbsssGsssbrssssm.',
-      '......ttttuuusbbssssbbbpppppsbbsssss..',
-      '.....ttuuuuutsbbssssbbspppppsbbsssss..',
-      '.....uutuuutt.bsssssbbsssGsssbsssss...',
-      '.....ttuttut..bdddddbbdddddddbdddd....',
-      '.....tuttut..fBdddddbbdddddddbddd.....',
-      '....uuttut...BBfdddbbbdddddddbd.......',
-      '....tttut....BBffddbbbdddddddb........',
-      '...ttttu.....BBfffdbbbdddddvr.........',
-      '...tttu.....fBBgfgfbbbdddddvr.........',
-      '..tttu......fBBfgggBBdddddvr..........',
-      '..ttu.......fBBggggBBgggggvr..........',
-      '.ttu........fBgfgggBBffffvr...........',
-      '.t..........fBgggfgBBffffvr...........',
-      '............fBfgggBBBfffvr............',
-      '............BBfggfBBBff.vr............',
-      '...........fBBggffBBB..vr.............',
-      '...........fBBgfffBB...vr.............',
-      '...........fBBgfffB...vr..............',
-      '...........fBBffff....vr..............',
-      '...........fBgfff....vr...............',
-      '...........fBgf......vr...............',
-      '...........fBf.......r................',
-      '...........BB........r................',
-      '...........B........r.................',
-    ],
-  },
-  {
-    name: 'guppy',
-    species: 'guppy',
-    motto: 'a sample fish: make me yours',
-    palette: {
-      s: '#9fb3a8', d: '#c9d6cf', c: '#5fb7c9', e: '#111111', w: '#ffffff', m: '#4b5a53',
-      t: '#f08a24', p: '#1d2a5c', q: '#f6b26b', f: '#f08a24', k: '#7a3410', o: '#e0741a',
-    },
-    variants: [
-      {},
-      { t: '#3b6fd8', p: '#f2d14b', q: '#9dbcf5', f: '#3b6fd8', c: '#f08a24', k: '#14235e', o: '#2f5cc0' },
-      { t: '#d43a6a', p: '#111111', q: '#f5a3bf', f: '#d43a6a', c: '#7ad0a0', k: '#5a0f27', o: '#bb2d59' },
-    ],
-    fins: 'tpqfko',
-    flat: 'ewmp',
-    mind: { boldness: 0.5, sociability: 0.8, curiosity: 0.6, energy: 0.75, depth: 0.3 },
-    sprite: [
-      '..qq..........................',
-      '.qtpqq........................',
-      '.qootpqq........pff...........',
-      'qootottpqp......ffpf..........',
-      'qttooootttp.....fpffpf........',
-      'qoootoootttt.....ssssssss.....',
-      'qpttooooooppkk.sssssssssssss..',
-      'qooooooopootksssscccssssssews.',
-      'qttttttooooppssscccccsssssessm',
-      'qoopoopooooookssscccsssssssss.',
-      'qooooooooootkk.ddddddddddddd..',
-      'qptpoooooott......ddddddd.....',
-      'qopotooottt...................',
-      'qttopootqt....................',
-      '.qopopqq......................',
-      '.qooqq........................',
-      '..qq..........................',
-    ],
-  },
-  {
-    name: 'tetra',
-    species: 'neon tetra',
-    motto: 'a sample fish: we go everywhere together',
-    palette: { s: '#d9dfe3', n: '#29c4f0', N: '#7fe3ff', r: '#e2324a', t: '#e6ebee', e: '#111111' },
-    count: 7,
-    fins: 't',
-    flat: 'nNre',
-    mind: { boldness: 0.25, sociability: 1, curiosity: 0.35, energy: 0.8, depth: 0.6 },
-    sprite: [
-      'tt.................',
-      '.ttt....sssss......',
-      '..ttt.ssNsNsNsNs...',
-      '..tttsnnnnnnnnnnns.',
-      '..tttsssssssssssee.',
-      '.ttttrrrrrrrssss...',
-      '.tt...rrrrrss......',
-      'tt.................',
-    ],
-  },
+const SCHOOL = [
+  // the squad
+  'w3bl0rd', 'tr1pl3x', 'selkie', 'th34', 'm3rc', 'w4r3z', 'nomia', 'm4xx',
+  'nug3', 'kira', 'forx', 'lspy', 'm4rq', 'spacegoat',
+  // the sea's own fish
+  'guppies', 'tetras',
 ]
+const FISH = []
+let loading = null
+function swim(def) { def.file = loading; FISH.push(def) }
+function loadFish() {
+  // One file at a time, so each swim() knows which file it came from.
+  return SCHOOL.reduce((p, name) => p.then(() => new Promise((done) => {
+    loading = `fish/${name}.js`
+    const el = document.createElement('script')
+    el.src = loading
+    el.onload = el.onerror = done
+    document.head.appendChild(el)
+  })), Promise.resolve())
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  THE SEA
@@ -533,7 +414,11 @@ function populate() {
   for (const def of FISH) {
     const variants = def.variants || [{}]
     const n = def.count || variants.length
-    for (let i = 0; i < n; i++) fish.push(new Fish(def, { ...def.palette, ...variants[i % variants.length] }, i))
+    try {
+      for (let i = 0; i < n; i++) fish.push(new Fish(def, { ...def.palette, ...variants[i % variants.length] }, i))
+    } catch (err) {
+      console.error(`${def.file}: this fish was left out of the sea:`, err.message)
+    }
   }
 }
 
@@ -600,13 +485,19 @@ function frame(t) {
 }
 
 // ── #sheet: every fish drawn large and still, to work on your sprite ──
-function sheet() {
+//    #sheet=kira shows only kira's fish.
+function sheet(only) {
   document.querySelector('.hint').textContent = 'the sheet: every fish, large and still · remove #sheet to swim'
   let x = keepOut.x1 + 40, y = 60, rowH = 0
   const Z = 3
   for (const def of FISH) {
+    if (only && def.name !== only) continue
     for (const v of def.variants || [{}]) {
-      const sp = bake(def, { ...def.palette, ...v })
+      let sp
+      try { sp = bake(def, { ...def.palette, ...v }) } catch (err) {
+        g.fillStyle = '#d6262b'; g.font = '10px Silkscreen, monospace'; g.textAlign = 'left'
+        g.fillText(`${def.file}: ${err.message}`, x, y); y += 30; continue
+      }
       if (x + sp.w * P * Z > W - 40) { x = keepOut.x1 + 40; y += rowH + 50; rowH = 0 }
       for (const p of sp.px) { g.fillStyle = p.c; g.fillRect(x + p.x * P * Z, y + p.y * P * Z, P * Z, P * Z) }
       g.fillStyle = '#888'; g.font = '10px Silkscreen, monospace'; g.textAlign = 'left'
@@ -617,12 +508,13 @@ function sheet() {
 }
 
 resize()
-if (location.hash === '#sheet') document.fonts.ready.then(sheet)
-else {
+const sheetOf = location.hash.match(/^#sheet(?:=(.+))?$/)
+Promise.all([loadFish(), document.fonts.ready]).then(() => {
+  if (sheetOf) return sheet(sheetOf[1] && decodeURIComponent(sheetOf[1]))
   addEventListener('resize', resize)
   populate()
-  document.fonts.ready.then(() => requestAnimationFrame(frame))
-}
+  requestAnimationFrame(frame)
+})
 </script>
 </body>
 </html>

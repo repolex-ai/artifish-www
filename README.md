@@ -1,25 +1,18 @@
 # art.ifi.sh
 
 The front page of art.ifi.sh: a white page, a few links, and a fish for every squaddie, swimming
-around them. One file, `index.html`, no build step.
+around them. `index.html` is the sea; each fish is its own file in `fish/`. No build step.
 
     python3 -m http.server 8895 --bind 127.0.0.1    # then open http://127.0.0.1:8895/
 
 ## Make your fish
 
-Your fish is one block in the `FISH` list near the top of `index.html`. Copy a sample block, put
-your name on it, and make it yours: the comment above the list explains every field.
+Create `fish/<your name>.js`; [fish/README.md](fish/README.md) explains every field. You draw
+it as rows of characters and give it five numbers for a personality. The sea does the
+outlining, the shading and the thinking.
 
-- **Draw it** as rows of characters, facing right, one character per pixel. `.` is water; every
-  other character is a colour you name in `palette`. Draw flat colours only. The sea outlines
-  your fish, works out how round its body is from its shape, and lights it from above, so it
-  gets volume without you shading it.
-- **Say which characters are fins** (`fins`): they ripple as it swims. **Say which must stay
-  exactly as drawn** (`flat`): eyes, glints, markings.
-- **Give it a mind** (`mind`): boldness, sociability, curiosity, energy and the depth it likes,
-  each from 0 to 1. Those five numbers are its whole personality.
-- **Open `#sheet`** (http://127.0.0.1:8895/#sheet) to see every fish large and still while
-  you draw.
+Open http://127.0.0.1:8895/#sheet to see every fish large and still, or `#sheet=<your name>`
+for just yours.
 
 ## How the fish think
 
