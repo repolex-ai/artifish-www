@@ -33,6 +33,11 @@ get away. Its personality sets how much it wants each.
   itself follows it.
 - **They get tired** from swimming fast, and rest at their favourite depth until they recover.
 
+**goodlux visits now and then, as a diver** in a copper helmet on an air hose. Nobody sees the
+diver when the page opens; every minute or few the diver is lowered in behind the fish, hangs
+there a while, and is reeled back up. Curious fish swim over to look in the port, and shy ones
+startle at the diver coming down. Add `#diver` to the address to bring the diver in right away.
+
 A small sign above a fish shows when its mind changes: `?` curious, `!` startled, `z` resting,
 a red heart when it has learned to trust you. Hover over a fish to read its name, kind, mood
 and motto.

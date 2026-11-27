@@ -49,8 +49,8 @@
 //  console says why) rather than stopping the whole sea.
 // ════════════════════════════════════════════════════════════════════════════
 const SCHOOL = [
-  // the squad
-  'w3bl0rd', 'tr1pl3x', 'selkie', 'th34', 'm3rc', 'w4r3z', 'nomia', 'm4xx',
+  // the squad, and goodlux, who visits in a diving suit
+  'goodlux', 'w3bl0rd', 'tr1pl3x', 'selkie', 'th34', 'm3rc', 'w4r3z', 'nomia', 'm4xx',
   'nug3', 'kira', 'forx', 'lspy', 'm4rq', 'spacegoat',
   // the sea's own fish
   'guppies', 'tetras',
@@ -58,6 +58,8 @@ const SCHOOL = [
 const FISH = []
 let loading = null
 function swim(def) { def.file = loading; FISH.push(def) }
+let DIVER = null
+function dive(def) { def.file = loading; DIVER = def }
 function loadFish() {
   // One file at a time, so each swim() knows which file it came from.
   return SCHOOL.reduce((p, name) => p.then(() => new Promise((done) => {
@@ -171,7 +173,7 @@ let hoveredLink = null
 
 const MOODS = {
   cruise: 'cruising', school: 'with its own kind', inspect: 'curious about you', beg: 'hoping you have food',
-  eat: 'eating', rest: 'resting', flee: 'startled', look: 'reading the links', follow: 'following the others to food',
+  eat: 'eating', rest: 'resting', flee: 'startled', look: 'reading the links', follow: 'following the others to food', visit: 'watching the diver',
 }
 
 class Fish {
@@ -217,7 +219,7 @@ class Fish {
     this.hunger = Math.min(1, this.hunger + dt * .01)
     this.fear *= Math.exp(-dt / (1 + m.boldness * 2))
     this.trust = Math.max(0, this.trust - dt * .003)
-    this.bored = this.state === 'inspect' ? Math.min(1, this.bored + dt * (.16 - m.curiosity * .08)) : Math.max(0, this.bored - dt * .04)
+    this.bored = this.state === 'inspect' || this.state === 'visit' ? Math.min(1, this.bored + dt * (.16 - m.curiosity * .08)) : Math.max(0, this.bored - dt * .04)
 
     // a sudden movement near the fish startles it, and the fright spreads to whoever is close
     const md = Math.hypot(mouse.x - this.x, mouse.y - this.y)
@@ -236,6 +238,11 @@ class Fish {
     const feeding = !meal && near.find((o) => o.state === 'eat' && o.target)
     const cursorSeen = mouse.here && this.sees(mouse.x, mouse.y, 360)
     const still = mouse.speed < 160
+    const dv = diver && diver.inWater && this.sees(diver.x, diver.y, 380) ? diver : null
+    // a shy fish startles at the diver coming down, once a visit
+    if (dv && diver.state === 'down' && m.boldness < .4 && this.sawVisit !== diver.visits && Math.hypot(dv.x - this.x, dv.y - this.y) < 200) {
+      this.sawVisit = diver.visits; this.fear = .55; this.threat = { x: dv.x, y: dv.y }; this.show('!', 3)
+    }
 
     const score = {
       cruise: .25,
@@ -247,12 +254,13 @@ class Fish {
       rest: this.tired * (1.1 - m.energy * .5),
       flee: this.fear > .25 ? this.fear * 1.6 : 0,
       look: hoveredLink && this.sees(hoveredLink.x, hoveredLink.y, 420) ? m.curiosity * (1 - this.bored) * .7 : 0,
+      visit: dv ? m.curiosity * (1 - this.bored) * (1 - this.fear) * .8 : 0,
     }
     score[this.state] += .12   // a fish sticks with what it's doing unless something beats it clearly
     let best = 'cruise'
     for (const k in score) if (score[k] > score[best]) best = k
     if (best !== this.state) {
-      if (best === 'inspect') this.show('?', 6)
+      if (best === 'inspect' || best === 'visit') this.show('?', 6)
       if (best === 'rest') this.show('z', 10)
       this.state = best; this.since = 0; this.wp = null
     }
@@ -314,6 +322,13 @@ class Fish {
         const t = this.threat || mouse
         const dx = this.x - t.x, dy = this.y - t.y, d = Math.hypot(dx, dy) || 1
         tx = dx / d; ty = dy / d; speed = 1.4; break
+      }
+      case 'visit': {
+        // swim up to the diver's port and peer in; bolder fish come closer
+        const keep = diver.sp.w * P * .5 + 20 + (1 - m.boldness) * 70 + this.size * .3
+        const side = this.x < diver.x ? -1 : 1
+        toward(diver.x + side * keep, diver.y - diver.sp.h * P * .3 + (this.slot - .5) * diver.sp.h * P * .7 + Math.sin(this.since * 1.1) * 8, .35, 4)
+        face = diver.x > this.x ? 1 : -1; break
       }
       case 'look': {
         toward(hoveredLink.x + 40 + this.size * .4, hoveredLink.y + (this.size * .3) * Math.sin(this.since), .4, 6)
@@ -408,6 +423,86 @@ class Fish {
   }
 }
 
+// ── the diver: lowered in from the surface now and then, then reeled back up ──
+class Diver {
+  constructor(def) {
+    this.def = def; this.name = def.name; this.species = def.species || ''
+    this.sp = bake(def, def.palette)
+    this.state = 'away'; this.visits = 0
+    this.t = location.hash === '#diver' ? 1 : 25 + Math.random() * 35   // the first visit comes a little while after the page opens
+    this.x = 0; this.y = -1e4; this.phase = Math.random() * 10
+    const fit = def.hose || this.findFitting()
+    this.fit = fit
+  }
+  // where the hose joins: the brass fitting at the top right of the helmet
+  findFitting() {
+    let best = null
+    for (const p of this.sp.px) if (p.y < this.sp.h * .2 && (!best || p.x - p.y > best.x - best.y)) best = p
+    return best ? { x: best.x, y: best.y } : { x: this.sp.w / 2, y: 0 }
+  }
+  get inWater() { return this.state === 'down' || this.state === 'stay' }
+  get half() { return { w: this.sp.w * P / 2, h: this.sp.h * P / 2 } }
+  think(dt) {
+    this.t -= dt; this.phase += dt
+    const { w, h } = this.half
+    if (this.state === 'away') {
+      if (this.t > 0) return
+      const x0 = Math.min(W - w - 30, keepOut.x1 + w + 30)
+      this.x = this.hoseX = x0 + Math.random() * Math.max(0, W - w - 30 - x0)
+      this.to = Math.max(h + 30, H * (.35 + Math.random() * .3))   // somewhere in the middle of the water
+      this.y = -h - 20; this.state = 'down'; this.visits++; this.drift = (Math.random() - .5) * 30
+    } else if (this.state === 'down') {
+      this.y += Math.max(14, Math.min(70, (this.to - this.y) * .5)) * dt
+      if (this.y >= this.to - 3) { this.state = 'stay'; this.t = 15 + Math.random() * 15 }
+    } else if (this.state === 'stay') {
+      this.y = this.to + Math.sin(this.phase * .8) * 6
+      this.x += this.drift * dt * .3
+      if (Math.random() < dt * .45) this.breathe()
+      if (this.t <= 0) { this.state = 'up'; this.vy = 0 }
+    } else if (this.state === 'up') {
+      // reeled in: slow to start, then hand over hand
+      this.vy = Math.min(170, this.vy + 60 * dt)
+      this.y -= this.vy * dt
+      this.x += (this.hoseX - this.x) * Math.min(1, dt * .8)
+      if (this.y < -h - 60) { this.state = 'away'; this.t = 60 + Math.random() * 120 }
+    }
+  }
+  // a burst of bubbles from the helmet's valve
+  breathe() {
+    const v = this.at(this.sp.w / 2, 0)
+    for (let i = 0; i < 3 + Math.random() * 3; i++) bubbles.push({ x: v.x + (Math.random() - .5) * 8, y: v.y - i * 7, r: Math.random() < .4 ? 2 : 1, born: now, wob: Math.random() * 6 })
+  }
+  // a sprite pixel's place on the screen, with the gentle sway of something hanging on a line
+  at(px, py) {
+    const sway = Math.sin(this.phase * .7) * 1.6 * (py / this.sp.h)
+    return { x: Math.round(this.x / P) * P + Math.round(px - this.sp.w / 2 + sway) * P, y: Math.round(this.y / P) * P + (py - this.sp.h / 2) * P }
+  }
+  draw() {
+    if (this.state === 'away') return
+    const sp = this.sp
+    // the hose: from the surface, curving in to the fitting
+    const f = this.at(this.fit.x + .5, this.fit.y), sx = this.hoseX + Math.sin(this.phase * .5) * 10
+    const pts = [[sx, -10], [sx + 6, f.y * .45], [f.x + 46 + Math.sin(this.phase * .9) * 8, f.y - 60], [f.x + P, f.y]]
+    g.fillStyle = '#3b3f46'
+    for (let i = 0, n = Math.max(20, Math.ceil((f.y + 80) / 2)); i <= n; i++) {
+      const t = i / n, u = 1 - t
+      const x = u * u * u * pts[0][0] + 3 * u * u * t * pts[1][0] + 3 * u * t * t * pts[2][0] + t * t * t * pts[3][0]
+      const y = u * u * u * pts[0][1] + 3 * u * u * t * pts[1][1] + 3 * u * t * t * pts[2][1] + t * t * t * pts[3][1]
+      g.fillRect(Math.round(x / P) * P, Math.round(y / P) * P, P * 2, P * 2)
+    }
+    for (const p of sp.px) {
+      // the legs drift a little, one after the other
+      let kick = 0
+      if (p.y > sp.h * .62) kick = Math.round(Math.sin(this.phase * 1.3 + (p.x < sp.w / 2 ? 0 : 2.2)) * .8 * (p.y - sp.h * .62) / (sp.h * .38))
+      const q = this.at(p.x + kick, p.y)
+      g.fillStyle = p.c; g.fillRect(q.x, q.y, P, P)
+    }
+    g.fillStyle = '#b4b4b4'; g.font = '8px Silkscreen, monospace'; g.textAlign = 'center'
+    g.fillText(this.name, Math.round(this.x / P) * P, Math.round(this.y / P) * P + sp.h * P / 2 + 12)
+  }
+}
+let diver = null
+
 // ── the school, built from the blocks above ──
 const fish = []
 function populate() {
@@ -420,6 +515,7 @@ function populate() {
       console.error(`${def.file}: this fish was left out of the sea:`, err.message)
     }
   }
+  if (DIVER) try { diver = new Diver(DIVER) } catch (err) { console.error(`${DIVER.file}: the diver stays ashore:`, err.message) }
 }
 
 // ── food and bubbles ──
@@ -462,9 +558,11 @@ for (const a of document.querySelectorAll('nav a')) {
   a.addEventListener('blur', () => { hoveredLink = null })
 }
 function hover(e) {
-  const f = fish.find((f) => Math.abs(e.clientX - f.x) < f.sp.w * P / 2 && Math.abs(e.clientY - f.y) < f.sp.h * P / 2)
+  let f = fish.find((f) => Math.abs(e.clientX - f.x) < f.sp.w * P / 2 && Math.abs(e.clientY - f.y) < f.sp.h * P / 2)
+  if (!f && diver && diver.state !== 'away' && Math.abs(e.clientX - diver.x) < diver.half.w && Math.abs(e.clientY - diver.y) < diver.half.h) f = diver
   if (!f) { card.style.display = 'none'; return }
-  card.innerHTML = `<b>${f.name}</b><br><i>${f.species}</i><br>${MOODS[f.state]}${f.def.motto ? `<br><i>“${f.def.motto}”</i>` : ''}`
+  const mood = f === diver ? { down: 'on the way down', stay: 'visiting', up: 'being reeled back up' }[f.state] : MOODS[f.state]
+  card.innerHTML = `<b>${f.name}</b><br><i>${f.species}</i><br>${mood}${f.def.motto ? `<br><i>“${f.def.motto}”</i>` : ''}`
   card.style.display = 'block'
   card.style.left = Math.min(W - 250, e.clientX + 16) + 'px'; card.style.top = Math.max(8, f.y - f.sp.h * P / 2 - card.offsetHeight - 14) + 'px'
 }
@@ -478,6 +576,7 @@ function frame(t) {
   mouse.speed *= Math.exp(-dt * 5)
   g.clearRect(0, 0, W, H)
   for (const f of fish) f.think(dt, fish)
+  if (diver) { diver.think(dt); diver.draw() }   // drawn first, so the diver is behind every fish
   drawBits(dt)
   fish.sort((a, b) => b.size - a.size)    // the big ones swim behind
   for (const f of fish) f.draw()
@@ -493,7 +592,7 @@ function sheet(only) {
   const layout = (draw) => {
     let x = keepOut.x1 + 40, y = 60, rowH = 0
     g.font = '10px Silkscreen, monospace'; g.textAlign = 'left'
-    for (const def of FISH) {
+    for (const def of DIVER ? [DIVER, ...FISH] : FISH) {
       if (only && def.name !== only) continue
       for (const v of def.variants || [{}]) {
         let sp
